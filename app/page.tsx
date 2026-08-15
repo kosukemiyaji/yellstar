@@ -13,7 +13,7 @@ import {
 import { auth, db } from "@/lib/firebase";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Building2, Mail, UserCircle, Newspaper } from "lucide-react";
+import { Building2, Mail, UserCircle, Newspaper, Briefcase } from "lucide-react";
 import RecoverySetupModal from "@/components/RecoverySetupModal";
 
 // ----------------------------------------------------------------------
@@ -247,20 +247,16 @@ export default function HomePage() {
         />
       )}
 
-
       {/* ヘッダー */}
       <header className="sticky top-0 z-40 border-b border-white/60 bg-white/80 backdrop-blur-xl shadow-sm shadow-slate-200/30">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <a href="/" className="flex items-center gap-2 text-xl font-black tracking-tight group">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 text-white shadow-md shadow-indigo-500/20 transition-transform duration-300 group-hover:scale-105">
-              <StarIcon className="h-4 w-4 text-amber-300" />
-            </div>
-            <div className="flex items-center">
-              <span className="text-slate-900 font-extrabold">Yell</span>
-              <span className="bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 bg-clip-text text-transparent font-black">
-                star
-              </span>
-            </div>
+            {/* 画像のロゴに変更。publicフォルダにlogo.pngを配置してください */}
+            <img 
+              src="/logo.png" 
+              alt="Yellstar Logo" 
+              className="h-8 w-auto transition-transform duration-300 group-hover:scale-105" 
+            />
           </a>
 
           <nav className="flex items-center gap-3 sm:gap-6 text-xs sm:text-sm font-bold text-slate-600">
@@ -332,6 +328,22 @@ export default function HomePage() {
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {/* Yellstar Tasks リンク */}
+            <Link
+              href="/tasks"
+              className="group flex flex-col gap-3 rounded-3xl border border-white/60 bg-white/80 p-6 shadow-xl shadow-slate-200/50 backdrop-blur-xl transition hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-slate-200/60"
+            >
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 border border-slate-200 text-slate-600 transition group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-600">
+                <Briefcase className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Yellstar Tasks</h3>
+                <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                  案件の依頼・受託・エスクロー決済
+                </p>
+              </div>
+            </Link>
+
             <Link
               href="/bank"
               className="group flex flex-col gap-3 rounded-3xl border border-white/60 bg-white/80 p-6 shadow-xl shadow-slate-200/50 backdrop-blur-xl transition hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-slate-200/60"
@@ -379,7 +391,7 @@ export default function HomePage() {
 
             <a
               href="#news"
-              className="group flex flex-col gap-3 rounded-3xl border border-white/60 bg-white/80 p-6 shadow-xl shadow-slate-200/50 backdrop-blur-xl transition hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-slate-200/60"
+              className="group flex flex-col gap-3 rounded-3xl border border-white/60 bg-white/80 p-6 shadow-xl shadow-slate-200/50 backdrop-blur-xl transition hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-slate-200/60 lg:col-span-1"
             >
               <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 border border-slate-200 text-slate-600 transition group-hover:bg-slate-800 group-hover:text-white group-hover:border-slate-800">
                 <Newspaper className="h-5 w-5" />
