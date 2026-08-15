@@ -151,7 +151,13 @@ export default function TasksPage() {
         const clientRef = doc(db, "banks", user.uid);
         const clientSnap = await transaction.get(clientRef);
         const clientData = clientSnap.data();
-        if (!clientSnap.exists()) throw "口座が見つかりません";
+        if (!clientSnap.exists() || !clientData) throw "口座が見つかりません";
+
+        // TypeScriptエラー回避のための安全なhistory取得
+        let existingHistory: any[] = [];
+        if ('history' in clientData && Array.isArray(clientData.history)) {
+          existingHistory = clientData.history;
+        }
 
         const newBalance = clientData.balance - rewardNum;
         const newHistory = [
@@ -162,7 +168,7 @@ export default function TasksPage() {
             amount: -rewardNum,
             date: new Date().toLocaleString("ja-JP", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }),
           },
-          ...(clientData.history || [])
+          ...existingHistory
         ];
 
         transaction.update(clientRef, { balance: newBalance, history: newHistory });
@@ -242,9 +248,15 @@ export default function TasksPage() {
         const workerRef = doc(db, "banks", task.workerId!);
         
         const workerSnap = await transaction.get(workerRef);
-        if (!workerSnap.exists()) throw "ワーカーの口座が見つかりません";
-
         const workerData = workerSnap.data();
+        if (!workerSnap.exists() || !workerData) throw "ワーカーの口座が見つかりません";
+
+        // TypeScriptエラー回避のための安全なhistory取得（受け取り側も念のため）
+        let existingHistory: any[] = [];
+        if ('history' in workerData && Array.isArray(workerData.history)) {
+          existingHistory = workerData.history;
+        }
+
         const newBalance = (workerData.balance || 0) + task.reward;
         
         const newHistory = [
@@ -255,7 +267,7 @@ export default function TasksPage() {
             amount: task.reward,
             date: new Date().toLocaleString("ja-JP", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }),
           },
-          ...(workerData.history || [])
+          ...existingHistory
         ];
 
         transaction.update(workerRef, { balance: newBalance, history: newHistory });
