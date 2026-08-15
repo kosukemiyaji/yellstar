@@ -11,7 +11,9 @@ import {
   getDoc,
 } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Building2, Mail, UserCircle, Newspaper } from "lucide-react";
 import RecoverySetupModal from "@/components/RecoverySetupModal";
 
 // ----------------------------------------------------------------------
@@ -123,7 +125,7 @@ export default function HomePage() {
           console.error("ユーザーデータ取得エラー:", err);
         }
       } else {
-        router.push("/login");
+        setUser(null);
       }
       setLoading(false);
     });
@@ -164,7 +166,13 @@ export default function HomePage() {
       unsubscribeAuth();
       unsubscribeArticles();
     };
-  }, [router]);
+  }, []);
+
+  useEffect(() => {
+    if (!loading && user === null) {
+      router.replace("/login");
+    }
+  }, [loading, user, router]);
 
   // ログアウト処理
   const handleLogout = async () => {
@@ -184,9 +192,9 @@ export default function HomePage() {
     return "ユーザー";
   };
 
-  if (loading) {
+  if (loading || user === null) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-slate-50 via-indigo-50/30 to-purple-50/40">
+      <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-slate-50 via-gray-100 to-slate-200">
         <div className="relative flex items-center justify-center">
           <div className="h-14 w-14 rounded-full border-4 border-indigo-200 border-t-indigo-600 animate-spin" />
           <StarIcon className="absolute h-5 w-5 text-amber-400 animate-pulse" />
@@ -199,7 +207,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/20 to-slate-100 text-slate-900 overflow-x-hidden selection:bg-indigo-500 selection:text-white">
+    <div className="relative min-h-screen bg-gradient-to-br from-slate-50 via-gray-100 to-slate-200 text-slate-900 overflow-x-hidden selection:bg-slate-400 selection:text-white">
       {/* トースト通知オーバーレイ */}
       <div className="fixed top-5 right-5 z-50 flex flex-col gap-3 max-w-sm w-full px-4 pointer-events-none">
         {toasts.map((toast) => (
@@ -239,15 +247,9 @@ export default function HomePage() {
         />
       )}
 
-      {/* 背景光彩グラデーション装飾 */}
-      <div className="pointer-events-none fixed -z-10 inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 h-[500px] w-[500px] rounded-full bg-gradient-to-br from-indigo-300/30 via-purple-300/20 to-transparent blur-3xl" />
-        <div className="absolute top-1/3 -left-48 h-[450px] w-[450px] rounded-full bg-gradient-to-br from-amber-200/30 to-indigo-200/20 blur-3xl" />
-        <div className="absolute -bottom-20 right-1/4 h-[400px] w-[400px] rounded-full bg-indigo-200/20 blur-3xl" />
-      </div>
 
       {/* ヘッダー */}
-      <header className="sticky top-0 z-40 border-b border-white/60 bg-white/70 backdrop-blur-2xl transition-all">
+      <header className="sticky top-0 z-40 border-b border-white/60 bg-white/80 backdrop-blur-xl shadow-sm shadow-slate-200/30">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <a href="/" className="flex items-center gap-2 text-xl font-black tracking-tight group">
             <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 text-white shadow-md shadow-indigo-500/20 transition-transform duration-300 group-hover:scale-105">
@@ -298,40 +300,99 @@ export default function HomePage() {
       {/* メインコンテンツ */}
       <main className="max-w-6xl mx-auto px-6 py-8 sm:py-12 space-y-10">
         {/* ウェルカムヒーローバナー */}
-        <div className="relative overflow-hidden rounded-3xl border border-white/80 bg-white/70 p-7 sm:p-9 shadow-[0_10px_40px_rgba(79,70,229,0.06)] backdrop-blur-2xl transition-all">
-          <div className="pointer-events-none absolute -top-20 -right-20 h-64 w-64 rounded-full bg-gradient-to-br from-indigo-400/20 via-purple-300/20 to-amber-200/20 blur-3xl" />
-          
+        <div className="relative overflow-hidden rounded-3xl border border-white/60 bg-white/80 p-7 sm:p-9 shadow-xl shadow-slate-200/50 backdrop-blur-xl">
           <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="space-y-2">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-[11px] font-black uppercase tracking-wider text-indigo-600">
-                <StarIcon className="h-3 w-3 text-amber-400" />
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                <StarIcon className="h-3 w-3 text-slate-400" />
                 <span>Dashboard Overview</span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-                おかえりなさい、<span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">{getUserName()}</span> さん
+                おかえりなさい、<span className="text-slate-700">{getUserName()}</span> さん
               </h1>
               <p className="text-xs text-slate-500 leading-relaxed max-w-xl">
-                Yellstarの最新お知らせやアカウントの状態をチェックできます。
+                Yellstarの主要機能や最新お知らせにここからアクセスできます。
               </p>
             </div>
 
-            {/* アカウントQuick情報バッジ */}
-            <div className="flex flex-wrap items-center gap-2.5">
-              <a
-                href="/profile"
-                className="inline-flex items-center gap-1.5 rounded-2xl border border-indigo-200/80 bg-indigo-50/80 px-4 py-2 text-xs font-bold text-indigo-600 hover:bg-indigo-100/80 transition duration-200 shadow-sm"
-              >
-                <span>✏️</span> 名前を変更する
-              </a>
-
-              <div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-2 font-mono text-xs text-slate-600 shadow-sm">
-                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="font-semibold text-slate-400">ID:</span>
-                <span className="font-bold">{user?.email}</span>
-              </div>
+            <div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white/80 px-4 py-2 font-mono text-xs text-slate-600 shadow-sm">
+              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+              <span className="font-semibold text-slate-400">ID:</span>
+              <span className="font-bold">{user?.email}</span>
             </div>
           </div>
         </div>
+
+        {/* 機能ナビゲーション */}
+        <section className="space-y-4">
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-bold uppercase tracking-[0.2em] text-slate-500">
+              Quick Access
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Link
+              href="/bank"
+              className="group flex flex-col gap-3 rounded-3xl border border-white/60 bg-white/80 p-6 shadow-xl shadow-slate-200/50 backdrop-blur-xl transition hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-slate-200/60"
+            >
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 border border-slate-200 text-slate-600 transition group-hover:bg-slate-800 group-hover:text-white group-hover:border-slate-800">
+                <Building2 className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Yellstar Bank</h3>
+                <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                  銀行口座・送金・取引履歴
+                </p>
+              </div>
+            </Link>
+
+            <Link
+              href="/mailbox"
+              className="group flex flex-col gap-3 rounded-3xl border border-white/60 bg-white/80 p-6 shadow-xl shadow-slate-200/50 backdrop-blur-xl transition hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-slate-200/60"
+            >
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 border border-slate-200 text-slate-600 transition group-hover:bg-slate-800 group-hover:text-white group-hover:border-slate-800">
+                <Mail className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900">メールボックス</h3>
+                <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                  メッセージの確認・返信
+                </p>
+              </div>
+            </Link>
+
+            <Link
+              href="/profile"
+              className="group flex flex-col gap-3 rounded-3xl border border-white/60 bg-white/80 p-6 shadow-xl shadow-slate-200/50 backdrop-blur-xl transition hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-slate-200/60"
+            >
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 border border-slate-200 text-slate-600 transition group-hover:bg-slate-800 group-hover:text-white group-hover:border-slate-800">
+                <UserCircle className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900">プロフィール設定</h3>
+                <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                  アカウント情報の管理
+                </p>
+              </div>
+            </Link>
+
+            <a
+              href="#news"
+              className="group flex flex-col gap-3 rounded-3xl border border-white/60 bg-white/80 p-6 shadow-xl shadow-slate-200/50 backdrop-blur-xl transition hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-slate-200/60"
+            >
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 border border-slate-200 text-slate-600 transition group-hover:bg-slate-800 group-hover:text-white group-hover:border-slate-800">
+                <Newspaper className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900">最新ニュース</h3>
+                <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                  運営からのお知らせ一覧
+                </p>
+              </div>
+            </a>
+          </div>
+        </section>
 
         {/* ニュース一覧セクション */}
         <section id="news" className="space-y-6">
