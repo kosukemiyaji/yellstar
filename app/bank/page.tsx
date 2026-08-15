@@ -11,6 +11,10 @@ import {
   setDoc,
   runTransaction,
   arrayUnion,
+  collection,
+  query,
+  where,
+  getDocs,
 } from "firebase/firestore";
 import {
   ArrowLeft,
@@ -136,7 +140,8 @@ export default function BankPage() {
   const [setupLoading, setSetupLoading] = useState(false);
   const [setupError, setSetupError] = useState<string | null>(null);
 
-  const [recipientUid, setRecipientUid] = useState("");
+  // UIDからカード番号入力へ変更
+  const [recipientCardNumber, setRecipientCardNumber] = useState("");
   const [transferAmount, setTransferAmount] = useState("");
   const [transferLoading, setTransferLoading] = useState(false);
 
@@ -229,7 +234,6 @@ export default function BankPage() {
     setSetupError(null);
 
     try {
-      // 念のため、既に口座が存在する場合は新規開設せずそのまま読み込む
       const docRef = doc(db, "banks", user.uid);
       const existing = await getDoc(docRef);
 
@@ -286,13 +290,14 @@ export default function BankPage() {
     if (!user || transferLoading || needsSetup) return;
 
     const amount = parseInt(transferAmount, 10);
-    const toUid = recipientUid.trim();
+    // 入力されたカード番号を正規化（ハイフンなしで入力されても対応）
+    const targetCardNumber = normalizeCardNumber(recipientCardNumber);
 
-    if (!toUid) {
-      showToast("送金先ユーザーIDを入力してください", "error");
+    if (!targetCardNumber || targetCardNumber.replace(/\D/g, "").length !== 16) {
+      showToast("有効な16桁のカード番号を入力してください", "error");
       return;
     }
-    if (toUid === user.uid) {
+    if (targetCardNumber === cardNumber) {
       showToast("自分自身には送金できません", "error");
       return;
     }
@@ -304,13 +309,27 @@ export default function BankPage() {
     setTransferLoading(true);
 
     try {
+      // 1. カード番号から相手の口座（UID）を検索する
+      const banksRef = collection(db, "banks");
+      const q = query(banksRef, where("cardNumber", "==", targetCardNumber));
+      const querySnapshot = await getDocs(q);
+
+      if (querySnapshot.empty) {
+        throw new Error("指定されたカード番号の口座が見つかりません");
+      }
+
+      // 該当する口座のドキュメントIDが相手のUID
+      const recipientDoc = querySnapshot.docs[0];
+      const toUid = recipientDoc.id;
+
       const senderRef = doc(db, "banks", user.uid);
       const recipientRef = doc(db, "banks", toUid);
       const now = formatDateLabel(new Date());
       const txId = Date.now();
 
-      let recipientName = toUid.slice(0, 8);
+      let recipientName = "不明なユーザー";
 
+      // 2. トランザクション処理（既存のまま）
       await runTransaction(db, async (transaction) => {
         const senderSnap = await transaction.get(senderRef);
         const recipientSnap = await transaction.get(recipientRef);
@@ -330,7 +349,7 @@ export default function BankPage() {
           throw new Error("残高が不足しています");
         }
 
-        recipientName = recipientData.accountName || recipientName;
+        recipientName = recipientData.accountName || "不明なユーザー";
 
         const senderTx: Transaction = {
           id: txId,
@@ -373,7 +392,7 @@ export default function BankPage() {
         },
         ...prev,
       ]);
-      setRecipientUid("");
+      setRecipientCardNumber("");
       setTransferAmount("");
       showToast(`${amount.toLocaleString()} YS の送金が完了しました`, "success");
     } catch (error) {
@@ -615,13 +634,13 @@ export default function BankPage() {
                 <form onSubmit={handleTransfer} className="space-y-5">
                   <div>
                     <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                      送金先ユーザーID (UID)
+                      送金先カード番号
                     </label>
                     <input
                       type="text"
-                      value={recipientUid}
-                      onChange={(e) => setRecipientUid(e.target.value)}
-                      placeholder="相手の Firebase UID"
+                      value={recipientCardNumber}
+                      onChange={(e) => setRecipientCardNumber(e.target.value)}
+                      placeholder="例: 4532-1234-5678-9012"
                       className="w-full rounded-xl border border-slate-200 bg-white/90 px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 outline-none transition font-mono focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
                     />
                   </div>
