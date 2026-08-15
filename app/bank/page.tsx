@@ -42,11 +42,20 @@ interface Transaction {
 
 interface BankAccount {
   accountName: string;
-  pin: string;
+  pin: string; // ここにはハッシュ化されたPINが保存されます
   cardNumber: string;
   balance: number;
   tier: string;
   history: Transaction[];
+}
+
+// 暗証番号（文字列）をSHA-256でハッシュ化する関数
+async function hashPin(pin: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(pin);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 function formatDateLabel(date: Date): string {
@@ -125,6 +134,7 @@ export default function BankPage() {
   const [needsSetup, setNeedsSetup] = useState(false);
 
   const [accountName, setAccountName] = useState("");
+  const [accountPin, setAccountPin] = useState(""); // 照合用にFirestoreのハッシュ化PINを保持
   const [cardNumber, setCardNumber] = useState("");
   const [balance, setBalance] = useState(0);
   const [tier, setTier] = useState("Standard Member");
@@ -140,9 +150,9 @@ export default function BankPage() {
   const [setupLoading, setSetupLoading] = useState(false);
   const [setupError, setSetupError] = useState<string | null>(null);
 
-  // UIDからカード番号入力へ変更
   const [recipientCardNumber, setRecipientCardNumber] = useState("");
   const [transferAmount, setTransferAmount] = useState("");
+  const [transferPin, setTransferPin] = useState(""); // 送金時に入力するPIN
   const [transferLoading, setTransferLoading] = useState(false);
 
   const trustScore = useMemo(
@@ -157,6 +167,7 @@ export default function BankPage() {
 
   const applyAccountData = useCallback((data: BankAccount) => {
     setAccountName(data.accountName || "");
+    setAccountPin(data.pin || "");
     setCardNumber(data.cardNumber ? normalizeCardNumber(data.cardNumber) : "");
     setBalance(data.balance ?? 0);
     setTier(data.tier || "Standard Member");
@@ -173,6 +184,7 @@ export default function BankPage() {
         applyAccountData(docSnap.data() as BankAccount);
       } else {
         setAccountName("");
+        setAccountPin("");
         setCardNumber("");
         setBalance(0);
         setTier("Standard Member");
@@ -247,6 +259,10 @@ export default function BankPage() {
 
       const newCardNumber = generateCardNumber();
       const now = formatDateLabel(new Date());
+      
+      // ★ 暗証番号をハッシュ化
+      const hashedPin = await hashPin(setupPin);
+
       const initialHistory: Transaction[] = [
         {
           id: Date.now(),
@@ -259,7 +275,7 @@ export default function BankPage() {
 
       const accountData: BankAccount = {
         accountName: name,
-        pin: setupPin,
+        pin: hashedPin, // ハッシュ化された文字列を保存
         cardNumber: newCardNumber,
         balance: 0,
         tier: "Standard Member",
@@ -290,7 +306,6 @@ export default function BankPage() {
     if (!user || transferLoading || needsSetup) return;
 
     const amount = parseInt(transferAmount, 10);
-    // 入力されたカード番号を正規化（ハイフンなしで入力されても対応）
     const targetCardNumber = normalizeCardNumber(recipientCardNumber);
 
     if (!targetCardNumber || targetCardNumber.replace(/\D/g, "").length !== 16) {
@@ -305,10 +320,20 @@ export default function BankPage() {
       showToast("送金額は1以上の整数で入力してください", "error");
       return;
     }
+    if (!/^\d{4}$/.test(transferPin)) {
+      showToast("暗証番号を4桁で入力してください", "error");
+      return;
+    }
 
     setTransferLoading(true);
 
     try {
+      // ★ 入力されたPINをハッシュ化して、保存されているハッシュ値と照合
+      const inputHashedPin = await hashPin(transferPin);
+      if (inputHashedPin !== accountPin) {
+        throw new Error("暗証番号が間違っています");
+      }
+
       // 1. カード番号から相手の口座（UID）を検索する
       const banksRef = collection(db, "banks");
       const q = query(banksRef, where("cardNumber", "==", targetCardNumber));
@@ -318,7 +343,6 @@ export default function BankPage() {
         throw new Error("指定されたカード番号の口座が見つかりません");
       }
 
-      // 該当する口座のドキュメントIDが相手のUID
       const recipientDoc = querySnapshot.docs[0];
       const toUid = recipientDoc.id;
 
@@ -329,7 +353,7 @@ export default function BankPage() {
 
       let recipientName = "不明なユーザー";
 
-      // 2. トランザクション処理（既存のまま）
+      // 2. トランザクション処理
       await runTransaction(db, async (transaction) => {
         const senderSnap = await transaction.get(senderRef);
         const recipientSnap = await transaction.get(recipientRef);
@@ -392,8 +416,10 @@ export default function BankPage() {
         },
         ...prev,
       ]);
+      
       setRecipientCardNumber("");
       setTransferAmount("");
+      setTransferPin(""); // 成功時にPIN入力をクリア
       showToast(`${amount.toLocaleString()} YS の送金が完了しました`, "success");
     } catch (error) {
       const errMsg =
@@ -595,7 +621,7 @@ export default function BankPage() {
                     <span className="text-xs text-slate-600">Security</span>
                   </div>
                   <span className="text-[10px] font-semibold text-emerald-700 text-right leading-tight">
-                    量子暗号・
+                    暗号化保護・
                     <br className="sm:hidden" />
                     トランザクション保護済み
                   </span>
@@ -661,6 +687,22 @@ export default function BankPage() {
                     <p className="mt-1.5 text-[10px] text-slate-400">
                       利用可能残高: {balance.toLocaleString()} YS
                     </p>
+                  </div>
+
+                  {/* ★ 暗証番号の入力欄を追加 */}
+                  <div>
+                    <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                      4桁の暗証番号 (PIN)
+                    </label>
+                    <input
+                      type="password"
+                      inputMode="numeric"
+                      maxLength={4}
+                      value={transferPin}
+                      onChange={(e) => setTransferPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                      placeholder="••••"
+                      className="w-full rounded-xl border border-slate-200 bg-white/90 px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 outline-none transition tracking-[0.5em] font-mono focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
+                    />
                   </div>
 
                   <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3">
