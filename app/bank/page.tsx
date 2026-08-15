@@ -80,16 +80,16 @@ function normalizeCardNumber(raw: string): string {
 function maskCardNumber(cardNumber: string): string {
   const formatted = normalizeCardNumber(cardNumber);
   const digits = formatted.replace(/\D/g, "");
-  if (digits.length < 8) return "••••-••••-••••-••••";
+  if (digits.length < 8) return "•••• •••• •••• ••••";
   const first = digits.slice(0, 4);
   const last = digits.slice(-4);
-  return `${first}-••••-••••-${last}`;
+  return `${first} •••• •••• ${last}`;
 }
 
 function getDisplayedCardNumber(cardNumber: string, visible: boolean): string {
-  if (!cardNumber) return "—";
+  if (!cardNumber) return "•••• •••• •••• ••••";
   const formatted = normalizeCardNumber(cardNumber);
-  return visible ? formatted : maskCardNumber(formatted);
+  return visible ? formatted.replace(/-/g, " ") : maskCardNumber(formatted);
 }
 
 function computeTrustScore(
@@ -260,7 +260,6 @@ export default function BankPage() {
       const newCardNumber = generateCardNumber();
       const now = formatDateLabel(new Date());
       
-      // ★ 暗証番号をハッシュ化
       const hashedPin = await hashPin(setupPin);
 
       const initialHistory: Transaction[] = [
@@ -275,7 +274,7 @@ export default function BankPage() {
 
       const accountData: BankAccount = {
         accountName: name,
-        pin: hashedPin, // ハッシュ化された文字列を保存
+        pin: hashedPin,
         cardNumber: newCardNumber,
         balance: 0,
         tier: "Standard Member",
@@ -328,13 +327,11 @@ export default function BankPage() {
     setTransferLoading(true);
 
     try {
-      // ★ 入力されたPINをハッシュ化して、保存されているハッシュ値と照合
       const inputHashedPin = await hashPin(transferPin);
       if (inputHashedPin !== accountPin) {
         throw new Error("暗証番号が間違っています");
       }
 
-      // 1. カード番号から相手の口座（UID）を検索する
       const banksRef = collection(db, "banks");
       const q = query(banksRef, where("cardNumber", "==", targetCardNumber));
       const querySnapshot = await getDocs(q);
@@ -353,7 +350,6 @@ export default function BankPage() {
 
       let recipientName = "不明なユーザー";
 
-      // 2. トランザクション処理
       await runTransaction(db, async (transaction) => {
         const senderSnap = await transaction.get(senderRef);
         const recipientSnap = await transaction.get(recipientRef);
@@ -419,7 +415,7 @@ export default function BankPage() {
       
       setRecipientCardNumber("");
       setTransferAmount("");
-      setTransferPin(""); // 成功時にPIN入力をクリア
+      setTransferPin("");
       showToast(`${amount.toLocaleString()} YS の送金が完了しました`, "success");
     } catch (error) {
       const errMsg =
@@ -554,53 +550,109 @@ export default function BankPage() {
         >
           {/* 左: 仮想カード + ステータス */}
           <div className="flex flex-col gap-6 md:col-span-1 lg:col-span-4">
-            <GlassPanel highlight>
-              <div className="px-6 py-7 sm:px-7 sm:py-8">
-                <div className="mb-6 flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500">
-                    Virtual Card
+            {/* リアル質感 仮想クレジットカード */}
+            <div className="relative aspect-[1.586/1] w-full overflow-hidden rounded-2xl bg-gradient-to-tr from-slate-950 via-slate-900 to-zinc-800 p-6 text-white shadow-2xl shadow-slate-900/40 border border-slate-700/50 flex flex-col justify-between select-none">
+              
+              {/* 背景のホログラム光沢グラデーション */}
+              <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-blue-500/10 blur-3xl pointer-events-none" />
+              <div className="absolute -left-10 -bottom-10 h-40 w-40 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+
+              {/* 上段: ブランドロゴ & タッチ決済マーク */}
+              <div className="flex items-center justify-between z-10">
+                <div className="flex items-center gap-2">
+                  <div className="h-3.5 w-3.5 rounded-full bg-amber-400/90 shadow-sm" />
+                  <span className="font-mono text-xs font-black tracking-[0.25em] text-slate-200">
+                    YELLSTAR
                   </span>
-                  <CreditCard className="w-5 h-5 text-slate-400" />
+                </div>
+                
+                {/* タッチ決済アイコン */}
+                <svg className="w-6 h-6 text-slate-400/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 18a6 6 0 100-12 6 6 0 000 12z" className="opacity-0" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M8.5 14.5a5 5 0 010-5" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M11.5 16.5a8 8 0 000-9" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M14.5 18.5a11 11 0 000-13" />
+                </svg>
+              </div>
+
+              {/* 中段: ICチップ & 表示切り替えボタン */}
+              <div className="my-auto pt-2 z-10 flex items-center justify-between">
+                {/* メタリック風 ICチップ */}
+                <div className="relative h-9 w-11 rounded-md bg-gradient-to-br from-amber-200 via-yellow-400 to-amber-500 p-1 shadow-inner border border-amber-300/60 flex flex-col justify-between">
+                  <div className="h-full w-full border border-amber-600/40 rounded-[2px] grid grid-cols-2 gap-0.5">
+                    <div className="border-r border-b border-amber-600/40" />
+                    <div className="border-b border-amber-600/40" />
+                    <div className="border-r border-amber-600/40" />
+                    <div />
+                  </div>
                 </div>
 
+                {/* 番号の表示/非表示トグル */}
                 <button
                   type="button"
                   onClick={() => cardNumber && setShowCardNumber((v) => !v)}
                   disabled={!cardNumber}
-                  className="group mb-6 flex w-full items-center justify-between rounded-xl border border-slate-200/80 bg-slate-50/80 px-4 py-3 text-left transition hover:bg-white disabled:cursor-default disabled:opacity-70"
+                  className="flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 text-[11px] font-medium text-slate-300 backdrop-blur-md border border-white/10 hover:bg-white/20 transition active:scale-95 disabled:opacity-40"
                 >
-                  <span className="font-mono text-base sm:text-lg tracking-wider text-slate-800">
-                    {displayedCardNumber}
-                  </span>
-                  {cardNumber &&
-                    (showCardNumber ? (
-                      <EyeOff className="w-4 h-4 shrink-0 text-slate-400 group-hover:text-slate-600" />
-                    ) : (
-                      <Eye className="w-4 h-4 shrink-0 text-slate-400 group-hover:text-slate-600" />
-                    ))}
+                  {showCardNumber ? (
+                    <>
+                      <EyeOff className="w-3.5 h-3.5" /> 隠す
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="w-3.5 h-3.5" /> 表示
+                    </>
+                  )}
                 </button>
+              </div>
 
-                <p className="mb-1 text-[10px] uppercase tracking-wider text-slate-400">
-                  口座名義
-                </p>
-                <p className="mb-6 text-lg font-bold text-slate-900">
-                  {accountName || "—"}
-                </p>
+              {/* 下段: カード番号 & 名義・有効期限 */}
+              <div className="space-y-3 z-10">
+                {/* エンボス表現のカード番号 */}
+                <div className="font-mono text-base sm:text-lg tracking-[0.18em] text-slate-100 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+                  {displayedCardNumber}
+                </div>
 
-                <div className="mb-2 h-px w-full bg-slate-200" />
+                <div className="flex items-end justify-between">
+                  {/* 口座名義 */}
+                  <div>
+                    <p className="text-[8px] uppercase tracking-wider text-slate-400 font-mono">
+                      CARD HOLDER
+                    </p>
+                    <p className="font-mono text-xs sm:text-sm font-semibold uppercase tracking-wider text-slate-200 truncate max-w-[180px]">
+                      {accountName || "YOUR NAME"}
+                    </p>
+                  </div>
 
-                <p className="mt-4 text-[10px] uppercase tracking-wider text-slate-400">
-                  残高
+                  {/* 有効期限 */}
+                  <div className="text-right">
+                    <p className="text-[8px] uppercase tracking-wider text-slate-400 font-mono">
+                      VALID THRU
+                    </p>
+                    <p className="font-mono text-xs font-semibold text-slate-200">
+                      08/30
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 利用可能残高パネル */}
+            <GlassPanel>
+              <div className="px-6 py-5">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                  利用可能残高
                 </p>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-4xl font-black text-slate-900 sm:text-5xl">
+                  <span className="text-3xl font-black text-slate-900 sm:text-4xl">
                     {balance.toLocaleString()}
                   </span>
-                  <span className="text-lg font-bold text-slate-500">YS</span>
+                  <span className="text-base font-bold text-slate-500">YS</span>
                 </div>
               </div>
             </GlassPanel>
 
+            {/* アカウントステータス */}
             <GlassPanel>
               <div className="space-y-4 px-6 py-6">
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
@@ -689,7 +741,6 @@ export default function BankPage() {
                     </p>
                   </div>
 
-                  {/* ★ 暗証番号の入力欄を追加 */}
                   <div>
                     <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-slate-500">
                       4桁の暗証番号 (PIN)
