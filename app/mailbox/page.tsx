@@ -17,6 +17,7 @@ import {
 } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 interface MailMessage {
   id: string;
@@ -247,17 +248,22 @@ export default function MailboxPage() {
         <div className="absolute top-1/2 -left-40 h-[30rem] w-[30rem] rounded-full bg-gradient-to-tr from-sky-200/30 to-indigo-100/40 blur-3xl" />
       </div>
 
-      {/* ヘッダー */}
+{/* ヘッダー */}
       <header className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/80 px-6 py-3.5 backdrop-blur-md shadow-sm">
         <div className="mx-auto flex max-w-5xl items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-white font-bold shadow-md shadow-indigo-500/20">
-              ★
-            </div>
-            <span className="text-xl font-extrabold tracking-tight bg-gradient-to-r from-indigo-600 to-blue-600 bg-clip-text text-transparent">
-              Yellstar Mail
-            </span>
+          
+          {/* ロゴ画像に変更した部分 */}
+          <div className="flex items-center">
+            <Image
+              src="/logo.png" 
+              alt="Yellstar Mail Logo"
+              width={180} 
+              height={30} 
+              className="object-contain"
+              priority
+            />
           </div>
+
           <span className="max-w-[200px] truncate rounded-full border border-slate-200 bg-slate-100/80 px-3.5 py-1 font-mono text-xs text-slate-600 md:max-w-none">
             {user?.email}
           </span>
